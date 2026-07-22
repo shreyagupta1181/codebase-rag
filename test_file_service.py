@@ -1,22 +1,22 @@
-from app.services.indexing_service import build_embedding_index
-from app.services.vector_store import VectorStore
+from app.services.generation_service import GenerationService
 
-repo = r"C:\codebase-rag\repositories\fastapi"
 
-indexed_chunks = build_embedding_index(repo)
+def main():
 
-store = VectorStore()
+    service = GenerationService()
 
-store.build(indexed_chunks)
+    question = "What is APIRouter?"
 
-store.save("vector_store")
+    response = service.generate(question)
 
-print()
+    print("=" * 120)
+    print(response["answer"])
 
-print("FAISS vectors:", store.index.ntotal)
+    print("\nSources:\n")
 
-print("Metadata:", len(store.metadata))
+    for source in response["sources"]:
+        print(source)
 
-print()
 
-print("Saved successfully!")
+if __name__ == "__main__":
+    main()

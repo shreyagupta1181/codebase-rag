@@ -15,7 +15,7 @@ class VectorStore:
 
         embeddings = np.array(
             [chunk["embedding"] for chunk in indexed_chunks],
-            dtype=np.float32
+            dtype=np.float32,
         )
 
         dimension = embeddings.shape[1]
@@ -39,10 +39,15 @@ class VectorStore:
 
         faiss.write_index(
             self.index,
-            str(directory / "index.faiss")
+            str(directory / "index.faiss"),
         )
 
-        with open(directory / "metadata.json", "w", encoding="utf-8") as f:
+        with open(
+            directory / "metadata.json",
+            "w",
+            encoding="utf-8",
+        ) as f:
+
             json.dump(
                 self.metadata,
                 f,
@@ -58,5 +63,9 @@ class VectorStore:
             str(directory / "index.faiss")
         )
 
-        with open(directory / "metadata.json", encoding="utf-8") as f:
+        with open(
+            directory / "metadata.json",
+            encoding="utf-8",
+        ) as f:
+
             self.metadata = json.load(f)
