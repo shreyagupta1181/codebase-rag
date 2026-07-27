@@ -29,3 +29,7 @@ repositories/
 Thumbs.db
 
 vector_store/
+
+repository_state.json
+
+repositories/
