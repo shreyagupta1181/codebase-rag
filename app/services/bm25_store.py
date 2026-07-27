@@ -6,18 +6,11 @@ from rank_bm25 import BM25Okapi
 
 
 def tokenize(text: str) -> list[str]:
-    """
-    Tokenize code/text for BM25.
-    - Lowercase
-    - Split snake_case identifiers
-    - Remove punctuation
-    """
-
+    text = re.sub(r'(?<=[a-z0-9])(?=[A-Z])', ' ', text)   # camelCase -> camel Case
+    text = re.sub(r'(?<=[A-Z])(?=[A-Z][a-z])', ' ', text) # ABCDef -> ABC Def (acronym boundary)
     text = text.lower()
     text = text.replace("_", " ")
-
     return re.findall(r"\b[a-zA-Z0-9]+\b", text)
-
 
 class BM25Store:
 
