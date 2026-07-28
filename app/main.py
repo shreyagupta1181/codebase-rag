@@ -3,6 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.ask import router as ask_router
 from app.api.ingest import router as ingest_router
+import os
+
 
 
 app = FastAPI(
@@ -19,9 +21,15 @@ app = FastAPI(
 # CORS
 # -------------------------
 
+frontend_url = os.getenv(
+    "FRONTEND_URL",
+    "http://localhost:5173",
+)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
+        frontend_url,
         "http://localhost:5173",
         "http://127.0.0.1:5173",
     ],

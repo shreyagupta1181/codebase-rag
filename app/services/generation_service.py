@@ -1,13 +1,12 @@
 import json
 
 from app.services.query_router import retrieve
-from app.services.llm_service import OllamaLLM
-
+from app.services.llm_service import get_llm
 
 class GenerationService:
 
     def __init__(self):
-        self.llm = OllamaLLM()
+        self.llm = get_llm()
 
     def build_prompt(
         self,
