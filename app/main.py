@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.ask import router as ask_router
 from app.api.ingest import router as ingest_router
@@ -14,6 +15,26 @@ app = FastAPI(
 )
 
 
+# -------------------------
+# CORS
+# -------------------------
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+# -------------------------
+# Routers
+# -------------------------
+
 app.include_router(
     ingest_router,
     tags=["Ingestion"],
@@ -24,6 +45,10 @@ app.include_router(
     tags=["Questions"],
 )
 
+
+# -------------------------
+# Root
+# -------------------------
 
 @app.get("/")
 def root():

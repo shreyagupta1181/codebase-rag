@@ -33,3 +33,10 @@ vector_store/
 repository_state.json
 
 repositories/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
+# Environment variables
+.env
