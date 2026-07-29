@@ -3,7 +3,9 @@ from app.services.bm25_store import BM25Store
 
 
 bm25_store = BM25Store()
-bm25_store.load("bm25_store")
+
+def reload_bm25_store():
+    bm25_store.load("bm25_store")
 
 
 def reciprocal_rank_fusion(result_lists, k=60):

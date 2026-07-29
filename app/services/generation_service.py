@@ -191,7 +191,7 @@ Question:
         )
 
         # -----------------------------------------
-        # 3. Generate answer with Ollama
+        # 3. Generate answer with LLM
         # -----------------------------------------
 
         try:
@@ -211,7 +211,7 @@ Question:
                 "sources": [],
             }
 
-        # Useful while we're debugging Qwen
+        # Useful while we're debugging LLM responses
         print("\n===== RAW LLM RESPONSE =====")
         print(raw_response)
         print("============================\n")

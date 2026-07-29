@@ -102,6 +102,23 @@ def build_indexes(repo_path: str):
 
     print("BM25 index saved.")
 
+    # --------------------------------
+    # Refresh retrieval state
+    # --------------------------------
+
+    # Import here to avoid circular imports
+    from app.services.retrieval_service import (
+        reload_vector_store,
+    )
+    from app.services.hybrid_retrieval import (
+        reload_bm25_store,
+    )
+
+    reload_vector_store()
+    reload_bm25_store()
+
+    print("Retrieval stores refreshed.")
+
     print("\nRepository indexed successfully!")
 
     return {

@@ -8,6 +8,9 @@ from app.services.vector_store import VectorStore
 vector_store = VectorStore()
 
 
+def reload_vector_store():
+    vector_store.load("vector_store")
+
 def search(query: str, k: int = 5):
 
     # Load FAISS index only once
