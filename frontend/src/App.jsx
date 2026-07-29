@@ -263,7 +263,8 @@ function App() {
           </div>
 
           <div className="header-badge">
-            Local AI
+              AI Powered
+
           </div>
 
         </div>
