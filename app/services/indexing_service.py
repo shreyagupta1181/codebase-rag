@@ -1,9 +1,12 @@
 from pathlib import Path
 
 from app.services.chunking_service import chunk_repository
-from app.services.embedding_service import embed_text
+from app.services.embedding_service import embed_texts
 from app.services.vector_store import VectorStore
 from app.services.bm25_store import BM25Store
+
+
+BATCH_SIZE = 50
 
 
 def build_indexes(repo_path: str):
@@ -17,34 +20,59 @@ def build_indexes(repo_path: str):
             "No supported code chunks were found in the repository."
         )
 
+    print(f"\nFound {len(chunks)} chunks.")
+    print("Generating Gemini embeddings...\n")
+
     indexed_chunks = []
 
-    print(f"\nFound {len(chunks)} chunks.")
-    print("Generating embeddings...\n")
+    # --------------------------------
+    # Generate embeddings in batches
+    # --------------------------------
 
-    for i, chunk in enumerate(chunks, start=1):
+    for start in range(0, len(chunks), BATCH_SIZE):
 
-        embedding = embed_text(
+        batch = chunks[
+            start:start + BATCH_SIZE
+        ]
+
+        texts = [
             chunk["content"]
+            for chunk in batch
+        ]
+
+        embeddings = embed_texts(texts)
+
+        if len(embeddings) != len(batch):
+            raise ValueError(
+                "Embedding count does not match chunk count."
+            )
+
+        for chunk, embedding in zip(
+            batch,
+            embeddings,
+        ):
+            indexed_chunks.append({
+                "content": chunk["content"],
+                "metadata": chunk["metadata"],
+                "embedding": embedding,
+            })
+
+        completed = min(
+            start + BATCH_SIZE,
+            len(chunks),
         )
 
-        indexed_chunks.append({
-            "content": chunk["content"],
-            "metadata": chunk["metadata"],
-            "embedding": embedding,
-        })
-
         print(
-            f"\rEmbedding {i}/{len(chunks)}",
+            f"\rEmbedded {completed}/{len(chunks)}",
             end="",
             flush=True,
         )
 
     print("\n")
 
-    # ------------------------------
+    # --------------------------------
     # FAISS
-    # ------------------------------
+    # --------------------------------
 
     vector_store = VectorStore()
 
@@ -58,9 +86,9 @@ def build_indexes(repo_path: str):
 
     print("FAISS index saved.")
 
-    # ------------------------------
+    # --------------------------------
     # BM25
-    # ------------------------------
+    # --------------------------------
 
     bm25_store = BM25Store()
 

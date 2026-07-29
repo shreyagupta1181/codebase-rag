@@ -1,11 +1,54 @@
-from sentence_transformers import SentenceTransformer
+import os
+from pathlib import Path
 
-model = SentenceTransformer("BAAI/bge-small-en-v1.5")
+from dotenv import load_dotenv
+from google import genai
 
 
-def embed_text(text: str):
-    embedding = model.encode(
-        text,
-        normalize_embeddings=True
+BASE_DIR = Path(__file__).resolve().parents[2]
+load_dotenv(BASE_DIR / ".env")
+
+API_KEY = os.getenv("GEMINI_API_KEY")
+
+if not API_KEY:
+    raise ValueError(
+        "GEMINI_API_KEY environment variable is not set."
     )
-    return embedding.tolist()
+
+client = genai.Client(api_key=API_KEY)
+
+EMBEDDING_MODEL = "gemini-embedding-001"
+
+
+def embed_text(text: str) -> list[float]:
+    """
+    Generate an embedding for a single piece of text.
+    Used primarily for query embeddings.
+    """
+
+    response = client.models.embed_content(
+        model=EMBEDDING_MODEL,
+        contents=text,
+    )
+
+    return response.embeddings[0].values
+
+
+def embed_texts(texts: list[str]) -> list[list[float]]:
+    """
+    Generate embeddings for multiple pieces of text.
+    Used when indexing repository chunks.
+    """
+
+    if not texts:
+        return []
+
+    response = client.models.embed_content(
+        model=EMBEDDING_MODEL,
+        contents=texts,
+    )
+
+    return [
+        embedding.values
+        for embedding in response.embeddings
+    ]

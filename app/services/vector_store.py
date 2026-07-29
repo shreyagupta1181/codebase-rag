@@ -18,10 +18,13 @@ class VectorStore:
             dtype=np.float32,
         )
 
+        # Normalize stored embeddings.
+        # Inner product on normalized vectors = cosine similarity.
+        faiss.normalize_L2(embeddings)
+
         dimension = embeddings.shape[1]
 
         self.index = faiss.IndexFlatIP(dimension)
-
         self.index.add(embeddings)
 
         self.metadata = [
@@ -47,7 +50,6 @@ class VectorStore:
             "w",
             encoding="utf-8",
         ) as f:
-
             json.dump(
                 self.metadata,
                 f,
@@ -67,5 +69,4 @@ class VectorStore:
             directory / "metadata.json",
             encoding="utf-8",
         ) as f:
-
             self.metadata = json.load(f)
