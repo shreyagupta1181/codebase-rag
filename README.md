@@ -1,104 +1,147 @@
 # Codebase RAG
 
-Codebase RAG is a repository-aware question answering system that allows developers to ingest a GitHub repository and ask natural-language questions about its implementation.
+> Chat with any public GitHub repository using hybrid retrieval and grounded AI answers.
 
-Instead of treating source code as plain text, the system parses Python code using AST-based structural chunking, builds both dense and sparse retrieval indexes, performs hybrid retrieval using FAISS and BM25, and generates grounded answers with source citations.
+Codebase RAG is a full-stack repository-aware question answering system that allows developers to ingest a public GitHub repository and ask natural-language questions about its implementation.
 
-The project includes a FastAPI backend and a React frontend for repository ingestion and interactive codebase exploration.
+Instead of treating source code as plain text, the system parses Python code using AST-based structural chunking, generates Gemini embeddings, combines dense FAISS retrieval with sparse BM25 retrieval using Reciprocal Rank Fusion (RRF), and generates grounded answers with file, symbol, and line-level citations.
+
+The application includes a FastAPI backend and a React + Vite frontend, deployed using Render and Vercel.
 
 ---
 
-## Features
+## 🚀 Live Demo
+
+**Try it here:** https://codebase-rag-khaki.vercel.app
+
+Paste the URL of a public GitHub repository, index it, and start asking questions about its implementation.
+
+> The backend is hosted on Render's free tier and may take a short time to wake up after a period of inactivity.
+
+### Demo
+
+![Codebase RAG Demo](docs/demo.gif)
+
+---
+
+## ✨ Features
 
 - Ingest public GitHub repositories
 - Clone or update previously ingested repositories
 - Parse Python source code using AST
-- Chunk code by functions, classes, and methods
-- Preserve symbol metadata and source line numbers
-- Dense semantic retrieval using vector embeddings and FAISS
+- Chunk code by functions, classes, methods, and structural units
+- Preserve symbol metadata and exact source line numbers
+- Generate semantic embeddings using Gemini
+- Dense semantic retrieval using FAISS
 - Sparse lexical retrieval using BM25
-- Hybrid retrieval using Reciprocal Rank Fusion (RRF)
+- Hybrid retrieval using Reciprocal Rank Fusion
 - Symbol-aware query routing
-- Grounded LLM answer generation
-- Source citations with file paths and line numbers
-- Repository persistence across frontend refreshes
-- React-based chat interface
+- Exact and qualified symbol lookup
+- Grounded Gemini answer generation
+- Multi-chunk code reasoning
+- File, symbol, type, and line-level source citations
+- Reject questions unsupported by repository context
+- Refresh retrieval indexes after re-indexing
+- Restore the active repository across frontend refreshes
+- Interactive React chat interface
+- Production deployment using Vercel and Render
 
 ---
 
-## Architecture
+## 🧠 How It Works
 
 ```text
-                        GitHub Repository
-                               │
-                               ▼
+                         GitHub Repository
+                                │
+                                ▼
                        Repository Ingestion
-                               │
-                         Clone / Update
-                               │
-                               ▼
-                           AST Parser
-                               │
-                Functions / Classes / Methods
-                               │
-                               ▼
-                         Code Chunking
-                               │
-                  ┌────────────┴────────────┐
-                  │                         │
-                  ▼                         ▼
-             Embeddings                Tokenisation
-                  │                         │
-                  ▼                         ▼
-                FAISS                     BM25
-             Dense Search             Sparse Search
-                  │                         │
-                  └────────────┬────────────┘
-                               │
-                               ▼
-                  Reciprocal Rank Fusion
-                               │
-                               ▼
-                         Query Router
-                    ┌──────────┴──────────┐
-                    │                     │
-                    ▼                     ▼
-              Symbol Lookup        Hybrid Retrieval
-                    │                     │
-                    └──────────┬──────────┘
-                               ▼
-                        Retrieved Context
-                               │
-                               ▼
-                         Local LLM
-                           (Ollama)
-                               │
-                               ▼
+                                │
+                                ▼
+                          Clone / Update
+                                │
+                                ▼
+                            AST Parser
+                                │
+                                ▼
+                  Functions / Classes / Methods
+                                │
+                                ▼
+                         Structural Chunks
+                                │
+                 ┌──────────────┴──────────────┐
+                 │                             │
+                 ▼                             ▼
+         Gemini Embeddings                Tokenisation
+                 │                             │
+                 ▼                             ▼
+               FAISS                          BM25
+           Dense Retrieval               Sparse Retrieval
+                 │                             │
+                 └──────────────┬──────────────┘
+                                │
+                                ▼
+                    Reciprocal Rank Fusion
+                                │
+                                ▼
+                           Query Router
+                       ┌────────┴────────┐
+                       │                 │
+                       ▼                 ▼
+                 Symbol Lookup      Hybrid Retrieval
+                       │                 │
+                       └────────┬────────┘
+                                │
+                                ▼
+                       Retrieved Context
+                                │
+                                ▼
+                             Gemini
+                                │
+                                ▼
                   Grounded Answer + Sources
-                               │
-                               ▼
-                        React Frontend
 ```
 
 ---
 
-## How It Works
-
-### 1. Repository Ingestion
+## 📥 Repository Ingestion
 
 The user provides the URL of a public GitHub repository.
 
-The backend clones the repository locally. If the repository has already been cloned, the existing copy is updated instead of creating another copy.
+The FastAPI backend clones the repository locally. If the repository has already been cloned, the existing copy can be updated instead.
 
-The repository is then passed through the parsing and indexing pipeline.
+The repository is then passed through the complete indexing pipeline:
+
+```text
+GitHub Repository
+       │
+       ▼
+Clone / Update
+       │
+       ▼
+AST Parsing
+       │
+       ▼
+Structural Chunking
+       │
+       ▼
+Gemini Embeddings
+       │
+       ├─────────────► FAISS
+       │
+       └─────────────► BM25
+```
+
+When indexing completes, the active retrieval stores are refreshed so subsequent queries use the newly indexed repository.
+
+![Repository Ingestion](docs/screenshots/repository.png)
 
 ---
 
-### 2. AST-Based Code Parsing
+## 🌳 AST-Based Code Parsing
 
 Python files are parsed using Python's Abstract Syntax Tree (`ast`) module.
 
-Instead of splitting source code using arbitrary character or token boundaries, the parser extracts meaningful programming structures such as:
+Instead of splitting source code at arbitrary character or token boundaries, the parser extracts meaningful programming structures such as:
 
 - functions
 - async functions
@@ -114,17 +157,18 @@ Methods are stored using qualified names such as:
 APIRouter.include_router
 FastAPI.openapi
 GenerationService.generate
+HTML.render
 ```
 
-This provides more meaningful retrieval units than fixed-size text chunks.
+This creates retrieval units aligned with actual program structure rather than arbitrary text windows.
 
 ---
 
-### 3. Code Chunking
+## 🧩 Structural Code Chunking
 
 Parsed structures are converted into independently searchable chunks.
 
-Each chunk contains the source code along with metadata such as:
+Each chunk contains its source code along with metadata:
 
 ```text
 file
@@ -138,26 +182,73 @@ For example:
 
 ```text
 Type: method
-Name: APIRouter.include_router
-File: fastapi/routing.py
-Lines: 3082-3269
+Name: HTML.render
+File: requests_html.py
+Lines: 603-677
 ```
 
-The metadata is later used both for retrieval and source citations.
+This metadata is preserved throughout retrieval and later used to generate source citations.
 
 ---
 
-## Retrieval System
+## 🔢 Gemini Embeddings
 
-Codebase RAG combines two retrieval strategies.
+Each structural code chunk is converted into a dense vector representation using the Gemini embedding API.
 
-### Dense Retrieval — FAISS
+Embeddings are generated in batches during repository indexing.
 
-Each code chunk is converted into a vector embedding.
+The resulting vectors capture semantic information about the code, allowing conceptual queries to retrieve relevant implementations even when the wording differs from identifiers used in the repository.
 
-FAISS stores these vectors and performs similarity search between the user's query embedding and repository code embeddings.
+For example:
 
-Dense retrieval is useful for conceptual questions where the query may not contain the exact terminology used in the source code.
+```text
+How does this project render JavaScript?
+```
+
+can retrieve:
+
+```text
+HTML.render
+HTML._async_render
+HTML.arender
+```
+
+without requiring the query to explicitly mention all three symbols.
+
+---
+
+# 🔎 Retrieval System
+
+Codebase RAG combines three retrieval strategies:
+
+1. Dense semantic retrieval
+2. Sparse lexical retrieval
+3. Direct symbol lookup
+
+---
+
+## Dense Retrieval — FAISS
+
+Gemini embeddings for code chunks are stored in a FAISS vector index.
+
+Vectors are L2-normalised, allowing inner-product search to behave like cosine similarity.
+
+At query time:
+
+```text
+Question
+   │
+   ▼
+Gemini Embedding
+   │
+   ▼
+FAISS Similarity Search
+   │
+   ▼
+Semantic Candidates
+```
+
+Dense retrieval is particularly useful for conceptual questions where the user's wording differs from the implementation.
 
 For example:
 
@@ -165,108 +256,211 @@ For example:
 How does the application combine search results?
 ```
 
-may retrieve code related to hybrid retrieval even if the exact wording does not appear in the source.
+can retrieve `hybrid_search` even if the query does not use that exact function name.
 
 ---
 
-### Sparse Retrieval — BM25
+## Sparse Retrieval — BM25
 
 BM25 performs lexical retrieval based on token overlap between the query and indexed code.
 
-The tokenizer handles common programming naming conventions such as:
+The BM25 representation includes information such as:
+
+- symbol name
+- symbol type
+- filename
+- source code
+
+This makes sparse retrieval particularly useful for programming identifiers such as:
 
 ```text
-include_router → include router
-getOpenAPISchema → get Open API Schema
-```
-
-The BM25 document representation includes symbol name, type, filename, and source code.
-
-This makes BM25 particularly useful for exact identifiers such as:
-
-```text
-APIRouter
+BaseParser
 include_router
 GenerationService
+HTML.render
 ```
+
+BM25 complements dense retrieval by preserving strong lexical matches.
 
 ---
 
-### Hybrid Retrieval
+## 🔀 Hybrid Retrieval
 
-Dense and sparse retrieval are combined to benefit from both semantic similarity and exact lexical matching.
+Conceptual queries are searched using both FAISS and BM25.
 
 ```text
-Query
-  │
-  ├── FAISS ──► semantic candidates
-  │
-  └── BM25 ───► lexical candidates
-                    │
-                    ▼
-           Reciprocal Rank Fusion
-                    │
-                    ▼
-               Final Ranking
+                    Query
+                      │
+             ┌────────┴────────┐
+             │                 │
+             ▼                 ▼
+           FAISS              BM25
+      Semantic Search     Lexical Search
+             │                 │
+             ▼                 ▼
+       Dense Candidates   Sparse Candidates
+             │                 │
+             └────────┬────────┘
+                      │
+                      ▼
+             Reciprocal Rank Fusion
+                      │
+                      ▼
+                 Final Ranking
 ```
 
 A larger candidate pool is retrieved from both systems before fusion.
 
-Test-file results are slightly penalised during ranking so that implementation code is preferred when relevance is otherwise similar.
+The highest-ranked fused chunks are then passed to the generation layer.
+
+Test-file results are slightly penalised during fusion so implementation code is preferred when relevance is otherwise similar.
 
 ---
 
-## Reciprocal Rank Fusion
+## 🏆 Reciprocal Rank Fusion
 
-FAISS and BM25 scores are not directly comparable because the two systems use different scoring methods.
+FAISS and BM25 produce fundamentally different scores.
 
-Instead of combining raw scores, Codebase RAG uses Reciprocal Rank Fusion (RRF).
+A FAISS similarity score cannot be meaningfully compared directly with a BM25 relevance score.
 
-For a result ranked at position `r`:
+Instead of combining raw scores, Codebase RAG uses **Reciprocal Rank Fusion (RRF)**.
+
+For a result appearing at rank `r`:
 
 ```text
 RRF score = 1 / (k + r)
 ```
 
-Results appearing highly in both retrieval systems accumulate a higher combined score.
+Results appearing near the top of multiple retrieval systems accumulate larger combined scores.
 
-This allows the application to combine heterogeneous retrieval systems without normalising their raw scores.
+Example:
+
+```text
+                 FAISS Ranking      BM25 Ranking
+                       │                 │
+                       ▼                 ▼
+hybrid_search          #1                #2
+retrieve               #3                #1
+BM25Store              #5                #3
+                       │                 │
+                       └────────┬────────┘
+                                ▼
+                              RRF
+                                │
+                                ▼
+                         Combined Ranking
+```
+
+This allows heterogeneous retrieval systems to be combined without requiring score normalisation.
 
 ---
 
-## Query Routing
+## 🎯 Symbol-Aware Query Routing
 
-Not every question should be handled in exactly the same way.
+Not every code question should use the same retrieval strategy.
 
-The query router distinguishes between symbol-oriented queries and conceptual queries.
+Consider:
+
+```text
+HTML.render
+```
+
+versus:
+
+```text
+How does this project render JavaScript?
+```
+
+The first is a precise structural reference.
+
+The second is a conceptual question requiring broader retrieval.
+
+The query router therefore distinguishes between exact/qualified symbol queries and conceptual queries.
+
+```text
+                         User Query
+                             │
+                             ▼
+                     Detect Known Symbol
+                             │
+                  ┌──────────┴──────────┐
+                  │                     │
+            Exact / Qualified       Conceptual
+                Symbol                Query
+                  │                     │
+                  ▼                     ▼
+            Symbol Lookup        Hybrid Retrieval
+                  │                     │
+                  └──────────┬──────────┘
+                             │
+                             ▼
+                       Final Context
+```
+
+Queries such as:
+
+```text
+BaseParser
+```
+
+and:
+
+```text
+HTML.render
+```
+
+can therefore prioritise direct symbol retrieval.
+
+Conceptual questions continue through the hybrid retrieval pipeline.
+
+![Symbol-Aware Retrieval](docs/screenshots/symbol-lookup.png)
+
+---
+
+## 🧠 Multi-Chunk Reasoning
+
+Many implementation questions cannot be answered from a single function.
 
 For example:
 
 ```text
-APIRouter.include_router
+How does this project render JavaScript?
 ```
 
-can benefit from direct symbol lookup.
-
-Whereas:
+may require understanding:
 
 ```text
-How does FastAPI include routers?
+HTML.render
+      │
+      ▼
+HTML._async_render
+      │
+      ├── creates browser page
+      ├── loads content
+      ├── executes JavaScript
+      └── retrieves rendered HTML
+
+HTML.arender
+      │
+      ▼
+asynchronous rendering interface
 ```
 
-requires broader hybrid retrieval.
+Hybrid retrieval can retrieve these related chunks independently.
 
-The router therefore chooses between symbol lookup and hybrid retrieval depending on the structure of the query.
+The generation layer then synthesises the retrieved implementations into a coherent explanation while citing the source chunks actually used.
+
+![Multi-Chunk Reasoning](docs/screenshots/multi-chunk-answer.png)
 
 ---
 
-## Grounded Answer Generation
+## 🔒 Grounded Answer Generation
 
-Retrieved chunks are passed to the LLM as repository context.
+Retrieved chunks are passed to Gemini as repository context.
 
-The generation layer is instructed to answer using only the retrieved repository information.
+The generation layer explicitly instructs the model to answer using **only the supplied repository information**.
 
-The model returns structured output containing:
+The model returns structured output:
 
 ```json
 {
@@ -276,59 +470,170 @@ The model returns structured output containing:
 }
 ```
 
-Only sources actually used to support the answer are returned to the frontend.
+The backend validates this response and maps `used_sources` back to retrieved chunks.
 
-If the retrieved repository context is insufficient, the system returns:
+Only sources actually selected by the model are returned to the frontend.
+
+If repository context is insufficient:
+
+```json
+{
+  "answerable": false,
+  "answer": "I couldn't find enough information in the repository.",
+  "used_sources": []
+}
+```
+
+This prevents the system from intentionally falling back to the model's general programming knowledge when repository evidence is unavailable.
+
+---
+
+## 📚 Source Citations
+
+Generated answers include the source locations used to support them.
+
+Example:
+
+```text
+HTML._async_render
+requests_html.py
+async_method
+Lines 505-547
+```
+
+Each source contains:
+
+- source number
+- filename
+- symbol name
+- symbol type
+- start line
+- end line
+
+This makes generated explanations traceable back to the actual repository implementation.
+
+---
+
+# 🧪 Example Results
+
+The system was tested against the public `requests-html` repository.
+
+## Conceptual Query
+
+**Question**
+
+```text
+How does this project render JavaScript?
+```
+
+Relevant retrieved sources included:
+
+```text
+HTML.render
+HTML._async_render
+HTML.arender
+```
+
+The generated response synthesised the relationship between the public rendering methods and the underlying Chromium-based implementation.
+
+---
+
+## Exact Symbol Query
+
+**Question**
+
+```text
+HTML.render
+```
+
+The query router prioritised the exact method definition and generated an answer grounded in:
+
+```text
+requests_html.py
+HTML.render
+Lines 603-677
+```
+
+---
+
+## Related Symbol Query
+
+**Question**
+
+```text
+BaseParser
+```
+
+The exact `BaseParser` class was prioritised while related symbols provided additional context.
+
+---
+
+## Negative Grounding Test
+
+**Question**
+
+```text
+How does this project process Stripe payments?
+```
+
+**Response**
 
 ```text
 I couldn't find enough information in the repository.
 ```
 
-instead of intentionally relying on external knowledge.
+Instead of answering from Gemini's general knowledge, the system correctly rejected a question unsupported by the indexed repository.
 
 ---
 
-## Source Citations
+# 🛠️ Tech Stack
 
-Answers include the source code locations used during generation.
-
-Example:
-
-```text
-FastAPI.openapi
-
-app/applications.py
-
-method · lines 1070–1103
-```
-
-This allows users to verify generated explanations against the repository itself.
-
----
-
-## Tech Stack
-
-### Backend
+## Backend
 
 - Python
 - FastAPI
+- Uvicorn
 - GitPython
 - Python AST
-- FAISS
+- NumPy
+- FAISS (`faiss-cpu`)
 - BM25 (`rank-bm25`)
-- Hugging Face / Sentence Transformers
-- Ollama
+- Gemini API (`google-genai`)
+- `python-dotenv`
 
-### Frontend
+## Retrieval
+
+- Gemini embeddings
+- FAISS dense vector search
+- BM25 sparse lexical search
+- Reciprocal Rank Fusion
+- Symbol-aware query routing
+- Direct symbol lookup
+
+## Generation
+
+- Gemini
+- Structured JSON generation
+- Retrieved-context grounding
+- Source validation
+
+## Frontend
 
 - React
 - Vite
 - JavaScript
 - CSS
 
+## Deployment
+
+- **Vercel** — React/Vite frontend
+- **Render** — FastAPI backend
+- **GitHub** — source repositories
+- **Gemini API** — embeddings and answer generation
+
 ---
 
-## Project Structure
+# 📁 Project Structure
 
 ```text
 codebase-rag/
@@ -350,6 +655,7 @@ codebase-rag/
 │   │   ├── llm_service.py
 │   │   ├── query_router.py
 │   │   ├── retrieval_service.py
+│   │   ├── symbol_retrieval.py
 │   │   └── vector_store.py
 │   │
 │   └── main.py
@@ -362,60 +668,76 @@ codebase-rag/
 │   │
 │   └── package.json
 │
+├── docs/
+│   ├── demo.gif
+│   └── screenshots/
+│       ├── repository.png
+│       ├── multi-chunk-answer.png
+│       └── symbol-lookup.png
+│
 ├── repositories/
 ├── vector_store/
 ├── bm25_store/
+│
 ├── requirements.txt
 └── README.md
 ```
 
-> The exact structure may vary slightly as the project evolves.
-
 ---
 
-## API Endpoints
+# 🔌 API
 
-### `POST /ingest`
+## `POST /ingest`
 
-Ingest and index a GitHub repository.
+Clones and indexes a public GitHub repository.
 
 Example request:
 
 ```json
 {
-  "repo_url": "https://github.com/user/repository"
+  "repo_url": "https://github.com/psf/requests-html"
 }
 ```
 
-The ingestion pipeline:
+The ingestion pipeline performs:
 
 ```text
 GitHub
-  ↓
+  │
+  ▼
 Clone / Update
-  ↓
+  │
+  ▼
 AST Parsing
-  ↓
-Chunking
-  ↓
-Embeddings
-  ↓
-FAISS + BM25
-  ↓
+  │
+  ▼
+Structural Chunking
+  │
+  ▼
+Gemini Embeddings
+  │
+  ├────► FAISS
+  │
+  └────► BM25
+  │
+  ▼
+Refresh Retrieval State
+  │
+  ▼
 Ready
 ```
 
 ---
 
-### `POST /ask`
+## `POST /ask`
 
-Ask a question about the currently indexed repository.
+Asks a question about the currently indexed repository.
 
-Example:
+Example request:
 
 ```json
 {
-  "question": "How does hybrid retrieval work?"
+  "question": "How does hybrid retrieval combine BM25 and FAISS?"
 }
 ```
 
@@ -423,15 +745,15 @@ Example response:
 
 ```json
 {
-  "answer": "The repository combines dense and sparse retrieval...",
+  "answer": "Hybrid retrieval fetches candidates from both dense FAISS search and sparse BM25 search before combining their rankings using Reciprocal Rank Fusion.",
   "sources": [
     {
       "id": 1,
       "file": "app/services/hybrid_retrieval.py",
       "type": "function",
       "name": "hybrid_search",
-      "start_line": 51,
-      "end_line": 61
+      "start_line": 54,
+      "end_line": 72
     }
   ]
 }
@@ -439,72 +761,103 @@ Example response:
 
 ---
 
-### `GET /repository`
+## `GET /repository`
 
-Returns information about the currently indexed repository.
+Returns information about the currently active repository.
 
-The frontend uses this endpoint to restore the active repository after a browser refresh.
+The frontend uses this endpoint to restore repository information after a browser refresh.
 
 ---
 
-## Running Locally
+# 💻 Running Locally
 
-### 1. Clone the repository
+## 1. Clone the Repository
 
 ```bash
 git clone https://github.com/shreyagupta1181/codebase-rag.git
 cd codebase-rag
 ```
 
-### 2. Create a virtual environment
+## 2. Create a Virtual Environment
 
-Windows:
+### Windows
 
 ```bash
 python -m venv .venv
 .venv\Scripts\activate
 ```
 
-macOS / Linux:
+### macOS / Linux
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 ```
 
-### 3. Install backend dependencies
+## 3. Install Backend Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 4. Start Ollama
+## 4. Configure Gemini
 
-Make sure Ollama is installed and the configured model is available locally.
+Create a `.env` file in the project root:
 
-Then start the backend:
+```env
+GEMINI_API_KEY=your_gemini_api_key
+```
+
+Never commit `.env` or API keys to Git.
+
+## 5. Start the Backend
 
 ```bash
 uvicorn app.main:app --reload
 ```
 
-The API will run at:
+The API runs at:
 
 ```text
 http://127.0.0.1:8000
 ```
 
-### 5. Start the frontend
+FastAPI documentation is available at:
+
+```text
+http://127.0.0.1:8000/docs
+```
+
+---
+
+## 6. Configure the Frontend
 
 Open another terminal:
 
 ```bash
 cd frontend
 npm install
+```
+
+Create:
+
+```text
+frontend/.env
+```
+
+with:
+
+```env
+VITE_API_URL=http://127.0.0.1:8000
+```
+
+## 7. Start the Frontend
+
+```bash
 npm run dev
 ```
 
-The frontend will normally run at:
+The frontend normally runs at:
 
 ```text
 http://localhost:5173
@@ -512,154 +865,260 @@ http://localhost:5173
 
 ---
 
-## Example Questions
+# ☁️ Deployment
 
-After indexing a repository, users can ask questions such as:
+## Frontend — Vercel
 
-```text
-What does APIRouter.include_router do?
+The React/Vite frontend is deployed on Vercel:
 
-How does FastAPI generate its OpenAPI schema?
+`https://codebase-rag-khaki.vercel.app`
 
-How does hybrid retrieval work?
+Production configuration:
 
-How does the query router decide when to use symbol lookup?
-
-What does GenerationService.generate do?
+```env
+VITE_API_URL=https://codebase-rag-ydwf.onrender.com
 ```
+
+The frontend sends ingestion and question requests to the deployed FastAPI API.
 
 ---
 
-## Current Limitations
+## Backend — Render
+
+The FastAPI backend is deployed on Render:
+
+`https://codebase-rag-ydwf.onrender.com`
+
+API documentation:
+
+`https://codebase-rag-ydwf.onrender.com/docs`
+
+The Vercel frontend communicates with the backend using:
+
+```env
+VITE_API_URL=https://codebase-rag-ydwf.onrender.com
+```
+
+The backend requires:
+
+```env
+GEMINI_API_KEY=your_gemini_api_key
+```
+
+The Gemini API key is configured securely as an environment variable and is never committed to the repository.
+
+Production start command:
+
+```bash
+uvicorn app.main:app --host 0.0.0.0 --port $PORT
+```
+
+FastAPI CORS configuration allows requests from the deployed Vercel frontend.
+
+> The free Render instance can spin down after inactivity, so the first request after an idle period may take longer than subsequent requests.
+
+---
+
+# 💡 Design Decisions
+
+## Why AST Instead of Fixed-Size Chunking?
+
+Source code has meaningful structural boundaries.
+
+A function or method represents a coherent unit of behaviour, while fixed-size text chunking can split implementation logic across unrelated chunks.
+
+```text
+Fixed-size chunking:
+
+function start
+    ...
+---------------- chunk boundary
+    ...
+function end
+
+
+AST chunking:
+
+┌───────────────────────────┐
+│ Complete function/method  │
+└───────────────────────────┘
+```
+
+AST parsing allows chunks to correspond to actual programming constructs while naturally preserving symbol names and line ranges.
+
+---
+
+## Why Gemini Embeddings?
+
+Conceptual questions often do not contain the exact identifiers used in source code.
+
+Dense embeddings allow semantically related queries and implementations to match even when their wording differs.
+
+Embedding generation is performed in batches during indexing to reduce API requests.
+
+---
+
+## Why Both BM25 and FAISS?
+
+Code search is both lexical and semantic.
+
+Consider:
+
+```text
+HTML.render
+```
+
+The exact identifier is highly informative, making lexical matching valuable.
+
+But:
+
+```text
+How does this project execute JavaScript in a browser?
+```
+
+requires semantic retrieval even if those exact words do not appear in the implementation.
+
+Combining FAISS and BM25 provides both behaviours.
+
+---
+
+## Why Reciprocal Rank Fusion?
+
+BM25 and FAISS use different scoring systems.
+
+Directly combining their raw scores would require score calibration or normalisation.
+
+RRF instead operates on ranking positions:
+
+```text
+score = 1 / (k + rank)
+```
+
+This provides a simple way to combine heterogeneous retrieval systems.
+
+---
+
+## Why Symbol-Aware Routing?
+
+Pure semantic retrieval is not always appropriate for exact code identifiers.
+
+If the user asks:
+
+```text
+HTML.render
+```
+
+the system already has a strong indication of the implementation being requested.
+
+Direct symbol lookup provides deterministic structural retrieval for these cases, while hybrid retrieval remains available for broader conceptual questions.
+
+---
+
+## Why Grounded Generation?
+
+A general-purpose LLM may already know about popular libraries.
+
+That is undesirable for repository analysis if the goal is to explain the code that was actually indexed.
+
+Codebase RAG therefore supplies retrieved repository chunks as context and instructs Gemini to answer only from that evidence.
+
+If the retrieved context cannot support an answer, the system returns an insufficient-context response rather than intentionally relying on outside model knowledge.
+
+---
+
+# ⚠️ Current Limitations
 
 ### Single Active Repository
 
-The current version maintains one active retrieval index at a time.
+The current deployment maintains one active retrieval index at a time.
 
 Indexing another repository replaces the active FAISS and BM25 indexes.
 
-Multi-repository index management and repository switching could be added in a future version.
+A future version could maintain separate persistent indexes for multiple repositories.
 
 ### Python-Focused Structural Parsing
 
 AST-based structural parsing currently focuses on Python source code.
 
-Supporting languages such as JavaScript, TypeScript, Java, C++, and Go would require language-specific parsers or a general parsing framework such as Tree-sitter.
+Supporting languages such as JavaScript, TypeScript, Java, C++, Go, and Rust would require language-specific parsers or a framework such as Tree-sitter.
 
 ### Inherited Symbol Resolution
 
-Symbols are indexed according to the class in which they are defined.
+Symbols are indexed according to the class where they are defined.
 
-For example, if:
+Inherited methods are not currently resolved through class hierarchies during direct symbol lookup.
 
-```text
-Flask → App → Scaffold
-```
-
-and `route()` is defined by `Scaffold`, the index contains:
-
-```text
-Scaffold.route
-```
-
-A query for:
-
-```text
-Flask.route
-```
-
-does not currently resolve the inheritance chain deterministically.
-
-Future work could build a symbol graph containing inheritance and other code relationships.
+A future implementation could construct a symbol graph representing inheritance and other code relationships.
 
 ### Retrieval Quality
 
-Hybrid retrieval improves robustness but does not guarantee that the most relevant implementation chunk will always rank first.
+Hybrid retrieval improves robustness but does not guarantee perfect ranking.
 
-Large repositories containing extensive tests, documentation, repeated identifiers, and complex inheritance structures can introduce retrieval noise.
+Large repositories containing extensive tests, generated code, repeated identifiers, or complex inheritance structures can introduce retrieval noise.
+
+### Deployment Constraints
+
+Repository cloning, parsing, embedding generation, and index construction happen during ingestion.
+
+Large repositories can therefore require more processing time and Gemini embedding API usage.
+
+The deployed backend may also experience cold-start latency after inactivity.
 
 ---
 
-## Future Improvements
+# 🔮 Future Improvements
 
-Potential extensions include:
-
-- inheritance-aware symbol resolution
-- multi-repository index management
-- repository selector and switching
-- support for additional programming languages
+- Multi-repository persistent indexes
+- Inheritance-aware symbol resolution
+- Support for additional programming languages
 - Tree-sitter based parsing
-- reranking retrieved chunks
-- code dependency and call graphs
-- conversation history
-- incremental indexing of changed files
+- Neural or LLM-based reranking
+- Function call graphs
+- Code dependency graphs
+- Incremental indexing of changed files
+- Conversation history
 - GitHub authentication for private repositories
-- clickable GitHub source links
-- streaming LLM responses
+- Clickable GitHub source links
+- Streaming responses
+- Background indexing jobs
+- Repository-level metadata filters
+- Index caching
 
 ---
 
-## Design Decisions
+# 📌 Project Status
 
-### Why AST instead of fixed-size chunking?
+**Core system complete and deployed.**
 
-Source code has structural boundaries.
+Implemented:
 
-A function or method represents a meaningful unit of behaviour, while splitting code every fixed number of characters can separate a function from its context.
+- GitHub repository ingestion
+- Repository cloning and updating
+- AST-based Python parsing
+- Structural code chunking
+- Gemini batch embeddings
+- FAISS dense retrieval
+- BM25 sparse retrieval
+- Reciprocal Rank Fusion
+- Symbol-aware query routing
+- Exact symbol lookup
+- Multi-chunk retrieval
+- Grounded Gemini generation
+- Structured model output validation
+- File, symbol, and line-level citations
+- Unsupported-query rejection
+- Repository re-indexing
+- Retrieval store refreshing
+- React/Vite frontend
+- FastAPI backend
+- Vercel frontend deployment
+- Render backend deployment
 
-AST parsing allows chunks to follow actual program structure.
-
-### Why both BM25 and FAISS?
-
-Code questions can be both lexical and semantic.
-
-BM25 is strong when users provide exact identifiers, while dense retrieval can match conceptually similar descriptions.
-
-Combining both makes retrieval more robust.
-
-### Why RRF?
-
-BM25 and FAISS produce scores on different scales.
-
-RRF combines rankings rather than raw scores, avoiding the need to directly compare incompatible scoring systems.
-
-### Why grounded generation?
-
-An LLM can answer programming questions from its pre-existing knowledge, but that does not guarantee that the answer describes the repository currently being analysed.
-
-Grounding generation in retrieved repository context makes answers repository-specific and allows the system to provide verifiable source locations.
-
----
-
-## Status
-
-The current version implements the complete core RAG pipeline:
-
-```text
-Repository
-    ↓
-AST Parsing
-    ↓
-Structural Chunking
-    ↓
-FAISS + BM25
-    ↓
-Hybrid Retrieval
-    ↓
-Query Routing
-    ↓
-Grounded Generation
-    ↓
-Source Citations
-    ↓
-React Interface
-```
-
-The project is currently focused on improving retrieval quality, repository generalisation, and deployment.
+The deployed application has been tested with third-party codebases for conceptual retrieval, exact symbol queries, multi-chunk synthesis, negative grounding, and repository switching.
 
 ---
 
-## Author
+## 👩‍💻 Author
 
 **Shreya Gupta**
 

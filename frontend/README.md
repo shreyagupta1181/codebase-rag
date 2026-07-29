@@ -1,16 +1,31 @@
-# React + Vite
+# Codebase RAG — Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + Vite frontend for **Codebase RAG**, an AI-powered application for exploring and understanding GitHub codebases through natural-language questions.
 
-Currently, two official plugins are available:
+The frontend provides the interface for repository ingestion, codebase querying, and displaying grounded answers with file, symbol, and line-level source references.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Features
 
-## React Compiler
+- Connect and index a public GitHub repository
+- Ask natural-language questions about the codebase
+- Display AI-generated answers grounded in retrieved source code
+- Show source files, symbols, types, and exact line ranges
+- Switch between repositories and rebuild the active index
+- Responsive web interface
+- Production API configuration through environment variables
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Tech Stack
 
-## Expanding the ESLint configuration
+- React
+- Vite
+- JavaScript
+- CSS
+- FastAPI backend
+- Vercel deployment
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Local Development
+
+Install dependencies:
+
+```bash
+npm install
