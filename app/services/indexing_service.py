@@ -10,7 +10,7 @@ from app.services.bm25_store import BM25Store
 # Voyage free-tier rate limit:
 # 3 requests per minute.
 # 22 seconds between requests gives us a small safety margin.
-BATCH_SIZE = 40
+BATCH_SIZE = 30
 BATCH_DELAY = 22
 
 
