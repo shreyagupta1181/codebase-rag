@@ -21,7 +21,7 @@ def build_indexes(repo_path: str):
         )
 
     print(f"\nFound {len(chunks)} chunks.")
-    print("Generating Gemini embeddings...\n")
+    print("Generating embeddings...\n")
 
     indexed_chunks = []
 
