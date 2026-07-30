@@ -1,59 +1,54 @@
 import os
-import time
 from pathlib import Path
 
 from dotenv import load_dotenv
-import voyageai
+from google import genai
 
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 load_dotenv(BASE_DIR / ".env")
 
-API_KEY = os.getenv("VOYAGE_API_KEY")
+API_KEY = os.getenv("GEMINI_API_KEY")
 
 if not API_KEY:
     raise ValueError(
-        "VOYAGE_API_KEY environment variable is not set."
+        "GEMINI_API_KEY environment variable is not set."
     )
 
-client = voyageai.Client(
-    api_key=API_KEY,
-    max_retries=2,
-    timeout=60,
-)
+client = genai.Client(api_key=API_KEY)
 
-EMBEDDING_MODEL = "voyage-code-3"
-EMBEDDING_DIMENSION = 1024
+EMBEDDING_MODEL = "gemini-embedding-001"
 
 
 def embed_text(text: str) -> list[float]:
     """
-    Generate an embedding for a user query.
+    Generate an embedding for a single query.
+    Used primarily for query embeddings.
     """
 
-    response = client.embed(
-        [text],
+    response = client.models.embed_content(
         model=EMBEDDING_MODEL,
-        input_type="query",
-        output_dimension=EMBEDDING_DIMENSION,
+        contents=text,
     )
 
-    return response.embeddings[0]
+    return response.embeddings[0].values
 
 
 def embed_texts(texts: list[str]) -> list[list[float]]:
     """
-    Generate document embeddings for repository chunks.
+    Generate embeddings for multiple repository chunks.
+    Used when building the FAISS vector index.
     """
 
     if not texts:
         return []
 
-    response = client.embed(
-        texts,
+    response = client.models.embed_content(
         model=EMBEDDING_MODEL,
-        input_type="document",
-        output_dimension=EMBEDDING_DIMENSION,
+        contents=texts,
     )
 
-    return response.embeddings
+    return [
+        embedding.values
+        for embedding in response.embeddings
+    ]

@@ -1,4 +1,3 @@
-import time
 from pathlib import Path
 
 from app.services.chunking_service import chunk_repository
@@ -7,14 +6,14 @@ from app.services.vector_store import VectorStore
 from app.services.bm25_store import BM25Store
 
 
-# Voyage free-tier rate limit:
-# 3 requests per minute.
-# 22 seconds between requests gives us a small safety margin.
-BATCH_SIZE = 30
-BATCH_DELAY = 22
+BATCH_SIZE = 50
 
 
 def build_indexes(repo_path: str):
+
+    # --------------------------------
+    # Chunk repository
+    # --------------------------------
 
     chunks = chunk_repository(
         Path(repo_path)
@@ -26,7 +25,7 @@ def build_indexes(repo_path: str):
         )
 
     print(f"\nFound {len(chunks)} chunks.")
-    print("Generating Voyage embeddings...\n")
+    print("Generating Gemini embeddings...\n")
 
     indexed_chunks = []
 
@@ -68,20 +67,12 @@ def build_indexes(repo_path: str):
         )
 
         print(
-            f"Embedded {completed}/{len(chunks)}"
+            f"\rEmbedded {completed}/{len(chunks)}",
+            end="",
+            flush=True,
         )
 
-        # --------------------------------
-        # Respect Voyage free-tier RPM
-        # --------------------------------
-
-        if completed < len(chunks):
-            print(
-                f"Waiting {BATCH_DELAY}s for Voyage rate limit..."
-            )
-            time.sleep(BATCH_DELAY)
-
-    print()
+    print("\n")
 
     # --------------------------------
     # FAISS
@@ -123,6 +114,7 @@ def build_indexes(repo_path: str):
     from app.services.retrieval_service import (
         reload_vector_store,
     )
+
     from app.services.hybrid_retrieval import (
         reload_bm25_store,
     )
