@@ -1,10 +1,10 @@
 # Codebase RAG
 
-> Chat with any public GitHub repository using hybrid retrieval and grounded AI answers.
+> Repository-aware RAG system for code understanding using AST-based chunking, hybrid retrieval, and grounded LLM responses.
 
 Codebase RAG is a full-stack repository-aware question answering system that allows developers to ingest a public GitHub repository and ask natural-language questions about its implementation.
 
-Instead of treating source code as plain text, the system parses Python code using AST-based structural chunking, generates Gemini embeddings, combines dense FAISS retrieval with sparse BM25 retrieval using Reciprocal Rank Fusion (RRF), and generates grounded answers with file, symbol, and line-level citations.
+Instead of treating source code as plain text, the system parses Python code using AST-based structural chunking, generates Gemini embeddings, combines dense FAISS retrieval with sparse BM25 retrieval using Weighted Reciprocal Rank Fusion (RRF) and CrossEncoder reranking, and generates grounded answers with file, symbol, and line-level citations.
 
 The application includes a FastAPI backend and a React + Vite frontend, deployed using Render and Vercel.
 
@@ -34,7 +34,9 @@ Paste the URL of a public GitHub repository, index it, and start asking question
 - Generate semantic embeddings using Gemini
 - Dense semantic retrieval using FAISS
 - Sparse lexical retrieval using BM25
-- Hybrid retrieval using Reciprocal Rank Fusion
+- Hybrid retrieval using Weighted Reciprocal Rank Fusion (RRF)
+- CrossEncoder reranking of fused candidates
+- Retrieval evaluation suite (Recall@k, MRR, nDCG benchmarking)
 - Symbol-aware query routing
 - Exact and qualified symbol lookup
 - Grounded Gemini answer generation
@@ -80,7 +82,10 @@ Paste the URL of a public GitHub repository, index it, and start asking question
                  └──────────────┬──────────────┘
                                 │
                                 ▼
-                    Reciprocal Rank Fusion
+                Weighted Reciprocal Rank Fusion
+                                │
+                                ▼
+                       CrossEncoder Reranker
                                 │
                                 ▼
                            Query Router
@@ -219,11 +224,12 @@ without requiring the query to explicitly mention all three symbols.
 
 # 🔎 Retrieval System
 
-Codebase RAG combines three retrieval strategies:
+Codebase RAG combines four retrieval components:
 
 1. Dense semantic retrieval
 2. Sparse lexical retrieval
-3. Direct symbol lookup
+3. Weighted RRF fusion + CrossEncoder reranking
+4. Direct symbol lookup
 
 ---
 
@@ -303,7 +309,10 @@ Conceptual queries are searched using both FAISS and BM25.
              └────────┬────────┘
                       │
                       ▼
-             Reciprocal Rank Fusion
+          Weighted Reciprocal Rank Fusion
+                      │
+                      ▼
+              CrossEncoder Reranker
                       │
                       ▼
                  Final Ranking
@@ -311,24 +320,24 @@ Conceptual queries are searched using both FAISS and BM25.
 
 A larger candidate pool is retrieved from both systems before fusion.
 
-The highest-ranked fused chunks are then passed to the generation layer.
+The fused candidates are then reranked by a CrossEncoder cross-attention model, which jointly scores each (query, chunk) pair for finer-grained relevance ordering than fusion alone can provide.
 
 Test-file results are slightly penalised during fusion so implementation code is preferred when relevance is otherwise similar.
 
 ---
 
-## 🏆 Reciprocal Rank Fusion
+## 🏆 Weighted Reciprocal Rank Fusion
 
 FAISS and BM25 produce fundamentally different scores.
 
 A FAISS similarity score cannot be meaningfully compared directly with a BM25 relevance score.
 
-Instead of combining raw scores, Codebase RAG uses **Reciprocal Rank Fusion (RRF)**.
+Instead of combining raw scores, Codebase RAG uses **Weighted Reciprocal Rank Fusion (RRF)**, giving greater importance to dense retrieval while preserving strong lexical matches from BM25.
 
 For a result appearing at rank `r`:
 
 ```text
-RRF score = 1 / (k + r)
+RRF score = weight / (k + r)
 ```
 
 Results appearing near the top of multiple retrieval systems accumulate larger combined scores.
@@ -345,13 +354,23 @@ BM25Store              #5                #3
                        │                 │
                        └────────┬────────┘
                                 ▼
-                              RRF
+                        Weighted RRF
                                 │
                                 ▼
                          Combined Ranking
 ```
 
 This allows heterogeneous retrieval systems to be combined without requiring score normalisation.
+
+---
+
+## 🥇 CrossEncoder Reranking
+
+RRF combines *rankings*, but it does not directly evaluate how relevant a chunk actually is to the query text.
+
+After fusion, the top candidates are re-scored using a CrossEncoder (`ms-marco-MiniLM-L-6-v2`), which encodes the query and each candidate chunk jointly rather than independently. This lets the reranker capture finer relevance signals that pure vector or lexical similarity can miss, at the cost of extra compute per query — so it's applied only to the fused shortlist rather than the full candidate pool.
+
+In evaluation, this improved MRR and nDCG@5 over Weighted RRF alone (see [Retrieval Evaluation](#-retrieval-evaluation) below).
 
 ---
 
@@ -514,75 +533,66 @@ This makes generated explanations traceable back to the actual repository implem
 
 ---
 
-# 🧪 Example Results
+# 📊 Retrieval Evaluation
 
-The system was tested against the public `requests-html` repository.
+The retrieval pipeline was evaluated on manually curated benchmarks across two public repositories, spanning symbol lookup and conceptual retrieval query types.
 
-## Conceptual Query
+## Repositories Evaluated
 
-**Question**
+| Repository      | Chunks | Queries | Status     |
+| --------------- | -----: | ------: | ---------- |
+| `requests-html` |     93 |      20 | ✅ Complete |
+| `requests`      |    707 |      20 | ✅ Complete |
 
-```text
-How does this project render JavaScript?
-```
+## Metrics
 
-Relevant retrieved sources included:
+- Recall@3
+- Recall@5
+- Mean Reciprocal Rank (MRR)
+- nDCG@5
 
-```text
-HTML.render
-HTML._async_render
-HTML.arender
-```
+## Retrieval Configurations Compared
 
-The generated response synthesised the relationship between the public rendering methods and the underlying Chromium-based implementation.
+- BM25 (sparse lexical)
+- Dense (Gemini embeddings + FAISS)
+- Hybrid (Weighted RRF)
+- Hybrid + CrossEncoder Reranker
 
----
+### `requests-html` results (20 queries: symbol lookup + conceptual)
 
-## Exact Symbol Query
+| Retriever  | Recall@3 | Recall@5 |   MRR | nDCG@5 |
+| ---------- | -------: | -------: | ----: | -----: |
+| BM25       |     0.70 |     0.80 | 0.614 |  0.661 |
+| Dense      |     0.90 | **1.00** | 0.681 |  0.762 |
+| **Hybrid** | **0.90** |     0.95 | **0.838** | **0.866** |
 
-**Question**
+Hybrid retrieval produced the strongest overall ranking quality on this repository.
 
-```text
-HTML.render
-```
+### `requests` results (20 queries: 10 symbol lookup, 10 conceptual)
 
-The query router prioritised the exact method definition and generated an answer grounded in:
+| Retriever              | Recall@3 | Recall@5 |   MRR | nDCG@5 |
+| ---------------------- | -------: | -------: | ----: | -----: |
+| BM25                   |     0.50 |     0.60 | 0.439 |  0.479 |
+| Dense                  |     0.85 |     0.90 | 0.713 |  0.761 |
+| Hybrid (Weighted RRF)  | **0.90** | **0.95** | 0.713 |  0.773 |
+| Hybrid + CrossEncoder  |     0.85 |     0.85 | **0.767** | **0.788** |
 
-```text
-requests_html.py
-HTML.render
-Lines 603-677
-```
+On this larger, noisier repository, plain fusion alone was not enough to beat Dense on MRR — but adding the CrossEncoder reranker on top of Weighted RRF pushed both MRR and nDCG@5 past all other configurations, confirming that reranking recovers the ordering quality that pure rank fusion misses at scale.
 
----
+## Overall Evaluation Suite
 
-## Related Symbol Query
+- **2 repositories**
+- **40 evaluation queries**
+- **4 retrieval configurations**
+- **4 retrieval metrics**
 
-**Question**
+This gives **160 retrieval runs** (40 queries × 4 configurations) and **640 metric values** (160 runs × 4 metrics).
 
-```text
-BaseParser
-```
+## Remaining Evaluation Work
 
-The exact `BaseParser` class was prioritised while related symbols provided additional context.
-
----
-
-## Negative Grounding Test
-
-**Question**
-
-```text
-How does this project process Stripe payments?
-```
-
-**Response**
-
-```text
-I couldn't find enough information in the repository.
-```
-
-Instead of answering from Gemini's general knowledge, the system correctly rejected a question unsupported by the indexed repository.
+- Latency measurements (average, p50, p95 response time)
+- Expanded evaluation to additional repositories
+- Published `EVALUATION.md` with full methodology
 
 ---
 
@@ -603,10 +613,12 @@ Instead of answering from Gemini's general knowledge, the system correctly rejec
 
 ## Retrieval
 
-- Gemini embeddings
-- FAISS dense vector search
-- BM25 sparse lexical search
-- Reciprocal Rank Fusion
+- Gemini Embeddings
+- FAISS (Dense Retrieval)
+- BM25 (Sparse Retrieval)
+- Weighted Reciprocal Rank Fusion
+- CrossEncoder (`ms-marco-MiniLM-L-6-v2`)
+- Retrieval Evaluation (Recall@k, MRR, nDCG)
 - Symbol-aware query routing
 - Direct symbol lookup
 
@@ -745,7 +757,7 @@ Example response:
 
 ```json
 {
-  "answer": "Hybrid retrieval fetches candidates from both dense FAISS search and sparse BM25 search before combining their rankings using Reciprocal Rank Fusion.",
+  "answer": "Hybrid retrieval fetches candidates from both dense FAISS search and sparse BM25 search before combining their rankings using Weighted Reciprocal Rank Fusion and CrossEncoder reranking.",
   "sources": [
     {
       "id": 1,
@@ -982,7 +994,7 @@ Combining FAISS and BM25 provides both behaviours.
 
 ---
 
-## Why Reciprocal Rank Fusion?
+## Why Weighted Reciprocal Rank Fusion?
 
 BM25 and FAISS use different scoring systems.
 
@@ -991,10 +1003,18 @@ Directly combining their raw scores would require score calibration or normalisa
 RRF instead operates on ranking positions:
 
 ```text
-score = 1 / (k + rank)
+score = weight / (k + rank)
 ```
 
-This provides a simple way to combine heterogeneous retrieval systems.
+Weighting the fusion toward dense retrieval, while still preserving BM25's exact-match strength, gave better empirical results than unweighted RRF during evaluation.
+
+---
+
+## Why Add a CrossEncoder Reranker?
+
+Rank fusion alone combines *positions*, not a direct relevance judgment of the query against each candidate's actual text.
+
+Evaluation showed that on a larger, noisier repository, Weighted RRF's ranking advantage over Dense retrieval narrowed. Reranking the fused shortlist with a CrossEncoder recovered and exceeded that advantage on MRR and nDCG@5, at an acceptable extra cost since it's only applied to a small shortlist rather than the full candidate set.
 
 ---
 
@@ -1052,7 +1072,7 @@ A future implementation could construct a symbol graph representing inheritance 
 
 ### Retrieval Quality
 
-Hybrid retrieval improves robustness but does not guarantee perfect ranking.
+Hybrid retrieval with reranking improves robustness but does not guarantee perfect ranking.
 
 Large repositories containing extensive tests, generated code, repeated identifiers, or complex inheritance structures can introduce retrieval noise.
 
@@ -1068,11 +1088,15 @@ The deployed backend may also experience cold-start latency after inactivity.
 
 # 🔮 Future Improvements
 
+- Latency benchmarking (p50/p95 query response time)
+- Larger CrossEncoder rerankers
+- Multi-vector retrieval
+- Retrieval caching
+- Learning-to-rank
 - Multi-repository persistent indexes
 - Inheritance-aware symbol resolution
 - Support for additional programming languages
 - Tree-sitter based parsing
-- Neural or LLM-based reranking
 - Function call graphs
 - Code dependency graphs
 - Incremental indexing of changed files
@@ -1099,7 +1123,9 @@ Implemented:
 - Gemini batch embeddings
 - FAISS dense retrieval
 - BM25 sparse retrieval
-- Reciprocal Rank Fusion
+- Weighted Reciprocal Rank Fusion
+- CrossEncoder reranking
+- Retrieval evaluation framework (Recall@k, MRR, nDCG benchmarking across 2 repos, 40 queries, 4 configurations)
 - Symbol-aware query routing
 - Exact symbol lookup
 - Multi-chunk retrieval
