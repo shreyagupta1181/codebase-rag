@@ -1,0 +1,222 @@
+[
+    {
+        "id": "R01",
+        "query": "Where is HTTPAdapter defined?",
+        "relevant_chunks": [
+            {
+                "file": "adapters.py",
+                "name": "HTTPAdapter",
+                "start_line": 158
+            }
+        ]
+    },
+    {
+        "id": "R02",
+        "query": "Where is HTTPAdapter.__init__ defined?",
+        "relevant_chunks": [
+            {
+                "file": "adapters.py",
+                "name": "HTTPAdapter.__init__",
+                "start_line": 201
+            }
+        ]
+    },
+    {
+        "id": "R03",
+        "query": "Where is init_poolmanager defined?",
+        "relevant_chunks": [
+            {
+                "file": "adapters.py",
+                "name": "HTTPAdapter.init_poolmanager",
+                "start_line": 239
+            }
+        ]
+    },
+    {
+        "id": "R04",
+        "query": "Where is proxy_manager_for defined?",
+        "relevant_chunks": [
+            {
+                "file": "adapters.py",
+                "name": "HTTPAdapter.proxy_manager_for",
+                "start_line": 269
+            }
+        ]
+    },
+    {
+        "id": "R05",
+        "query": "Where is cert_verify defined?",
+        "relevant_chunks": [
+            {
+                "file": "adapters.py",
+                "name": "HTTPAdapter.cert_verify",
+                "start_line": 307
+            }
+        ]
+    },
+    {
+        "id": "R06",
+        "query": "Where is Session defined?",
+        "relevant_chunks": [
+            {
+                "file": "sessions.py",
+                "name": "Session",
+                "start_line": 395
+            }
+        ]
+    },
+    {
+        "id": "R07",
+        "query": "Where is Session.send defined?",
+        "relevant_chunks": [
+            {
+                "file": "sessions.py",
+                "name": "Session.send",
+                "start_line": 752
+            }
+        ]
+    },
+    {
+        "id": "R08",
+        "query": "Where is resolve_redirects defined?",
+        "relevant_chunks": [
+            {
+                "file": "sessions.py",
+                "name": "SessionRedirectMixin.resolve_redirects",
+                "start_line": 186
+            }
+        ]
+    },
+    {
+        "id": "R09",
+        "query": "Where is rebuild_proxies defined?",
+        "relevant_chunks": [
+            {
+                "file": "sessions.py",
+                "name": "SessionRedirectMixin.rebuild_proxies",
+                "start_line": 334
+            }
+        ]
+    },
+    {
+        "id": "R10",
+        "query": "Where is rebuild_auth defined?",
+        "relevant_chunks": [
+            {
+                "file": "sessions.py",
+                "name": "SessionRedirectMixin.rebuild_auth",
+                "start_line": 309
+            }
+        ]
+    },
+    {
+        "id": "R11",
+        "query": "Where is PreparedRequest defined?",
+        "relevant_chunks": [
+            {
+                "file": "models.py",
+                "name": "PreparedRequest",
+                "start_line": 378
+            }
+        ]
+    },
+    {
+        "id": "R12",
+        "query": "Where is prepare_url defined?",
+        "relevant_chunks": [
+            {
+                "file": "models.py",
+                "name": "PreparedRequest.prepare_url",
+                "start_line": 483
+            }
+        ]
+    },
+    {
+        "id": "R13",
+        "query": "Where is prepare_headers defined?",
+        "relevant_chunks": [
+            {
+                "file": "models.py",
+                "name": "PreparedRequest.prepare_headers",
+                "start_line": 565
+            }
+        ]
+    },
+    {
+        "id": "R14",
+        "query": "Where is Response defined?",
+        "relevant_chunks": [
+            {
+                "file": "models.py",
+                "name": "Response",
+                "start_line": 732
+            }
+        ]
+    },
+    {
+        "id": "R15",
+        "query": "Where is HTTPDigestAuth defined?",
+        "relevant_chunks": [
+            {
+                "file": "auth.py",
+                "name": "HTTPDigestAuth",
+                "start_line": 124
+            }
+        ]
+    },
+    {
+        "id": "R16",
+        "query": "How does Requests initialize its connection pool?",
+        "relevant_chunks": [
+            {
+                "file": "adapters.py",
+                "name": "HTTPAdapter.init_poolmanager",
+                "start_line": 239
+            }
+        ]
+    },
+    {
+        "id": "R17",
+        "query": "How are redirects handled?",
+        "relevant_chunks": [
+            {
+                "file": "sessions.py",
+                "name": "SessionRedirectMixin.resolve_redirects",
+                "start_line": 186
+            }
+        ]
+    },
+    {
+        "id": "R18",
+        "query": "How does Requests verify SSL certificates?",
+        "relevant_chunks": [
+            {
+                "file": "adapters.py",
+                "name": "HTTPAdapter.cert_verify",
+                "start_line": 307
+            }
+        ]
+    },
+    {
+        "id": "R19",
+        "query": "How are request URLs prepared?",
+        "relevant_chunks": [
+            {
+                "file": "models.py",
+                "name": "PreparedRequest.prepare_url",
+                "start_line": 483
+            }
+        ]
+    },
+    {
+        "id": "R20",
+        "query": "How is Digest authentication implemented?",
+        "relevant_chunks": [
+            {
+                "file": "auth.py",
+                "name": "HTTPDigestAuth",
+                "start_line": 124
+            }
+        ]
+    }
+]

@@ -6,11 +6,12 @@ from rank_bm25 import BM25Okapi
 
 
 def tokenize(text: str) -> list[str]:
-    text = re.sub(r'(?<=[a-z0-9])(?=[A-Z])', ' ', text)   # camelCase -> camel Case
-    text = re.sub(r'(?<=[A-Z])(?=[A-Z][a-z])', ' ', text) # ABCDef -> ABC Def (acronym boundary)
+    text = re.sub(r'(?<=[a-z0-9])(?=[A-Z])', ' ', text)
+    text = re.sub(r'(?<=[A-Z])(?=[A-Z][a-z])', ' ', text)
     text = text.lower()
     text = text.replace("_", " ")
     return re.findall(r"\b[a-zA-Z0-9]+\b", text)
+
 
 class BM25Store:
 
@@ -22,10 +23,21 @@ class BM25Store:
     def build(self, indexed_chunks: list[dict]):
 
         self.corpus = []
-
         self.metadata = []
 
         for chunk in indexed_chunks:
+
+            file_path = chunk["metadata"]["file"].replace("\\", "/").lower()
+
+            # Skip tests/docs/examples
+            if (
+                "/tests/" in file_path
+                or file_path.startswith("tests/")
+                or "/test/" in file_path
+                or "/docs/" in file_path
+                or "/examples/" in file_path
+            ):
+                continue
 
             document = (
                 f"{chunk['metadata']['name']} "

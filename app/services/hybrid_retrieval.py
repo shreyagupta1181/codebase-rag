@@ -4,37 +4,78 @@ from app.services.bm25_store import BM25Store
 
 bm25_store = BM25Store()
 
+
 def reload_bm25_store():
     bm25_store.load("bm25_store")
 
 
-def reciprocal_rank_fusion(result_lists, k=60):
+def reciprocal_rank_fusion(
+    dense_results,
+    sparse_results,
+    dense_weight=2.0,
+    sparse_weight=1.0,
+    k=60,
+):
     scores = {}
     chunks = {}
 
-    for results in result_lists:
-        for rank, result in enumerate(results, start=1):
+    # Dense retrieval (higher weight)
+    for rank, result in enumerate(dense_results, start=1):
 
-            chunk = result["chunk"]
-            metadata = chunk["metadata"]
+        metadata = result["chunk"]["metadata"]
 
-            key = (
-                metadata["file"],
-                metadata["name"],
-                metadata["start_line"],
-            )
+        file_path = metadata["file"].replace("\\", "/").lower()
 
-            score = 1 / (k + rank)
+        if (
+            "/tests/" in file_path
+            or file_path.startswith("tests/")
+            or "/test/" in file_path
+            or "/docs/" in file_path
+            or "/examples/" in file_path
+        ):
+            continue
 
-            file_path = metadata["file"].replace("\\", "/").lower()
+        key = (
+            metadata["file"],
+            metadata["name"],
+            metadata["start_line"],
+        )
 
-            # Slightly penalise test chunks so implementation
-            # code wins when relevance is otherwise similar.
-            if "/tests/" in file_path or file_path.startswith("tests/"):
-                score *= 0.75
+        scores[key] = (
+            scores.get(key, 0)
+            + dense_weight / (k + rank)
+        )
 
-            scores[key] = scores.get(key, 0) + score
-            chunks[key] = chunk
+        chunks[key] = result["chunk"]
+
+    # BM25 retrieval
+    for rank, result in enumerate(sparse_results, start=1):
+
+        metadata = result["chunk"]["metadata"]
+
+        file_path = metadata["file"].replace("\\", "/").lower()
+
+        if (
+            "/tests/" in file_path
+            or file_path.startswith("tests/")
+            or "/test/" in file_path
+            or "/docs/" in file_path
+            or "/examples/" in file_path
+        ):
+            continue
+
+        key = (
+            metadata["file"],
+            metadata["name"],
+            metadata["start_line"],
+        )
+
+        scores[key] = (
+            scores.get(key, 0)
+            + sparse_weight / (k + rank)
+        )
+
+        chunks[key] = result["chunk"]
 
     ranked = sorted(
         scores.items(),
@@ -51,22 +92,26 @@ def reciprocal_rank_fusion(result_lists, k=60):
     ]
 
 
-def hybrid_search(query, k=5):
+def hybrid_search(query: str, k: int = 5):
 
-    candidate_k = max(k * 4, 20)
+    # Retrieve many candidates
+    candidate_k = 50
 
     dense_results = dense_search(
-        query,
+        query=query,
         k=candidate_k,
     )
 
     sparse_results = bm25_store.search(
-        query,
+        query=query,
         k=candidate_k,
     )
 
     fused = reciprocal_rank_fusion(
-        [dense_results, sparse_results]
+        dense_results,
+        sparse_results,
+        dense_weight=2.0,
+        sparse_weight=1.0,
     )
 
     return fused[:k]

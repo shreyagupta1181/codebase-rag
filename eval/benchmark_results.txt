@@ -1,0 +1,104 @@
+==========================================================
+CODEBASE RAG RETRIEVAL BENCHMARK
+==========================================================
+
+Repository
+----------
+Repository          : requests
+Language            : Python
+Indexed Chunks      : 707
+Evaluation Queries  : 20
+
+Retrievers
+----------
+1. BM25
+2. Dense Retrieval (BGE + FAISS)
+3. Hybrid Retrieval (Weighted RRF)
+4. Hybrid + CrossEncoder Reranker
+
+Metrics
+-------
+Recall@3
+Recall@5
+MRR
+nDCG@5
+
+==========================================================
+FINAL RESULTS
+==========================================================
+
+BM25
+-----
+Recall@3 : 0.500
+Recall@5 : 0.600
+MRR       : 0.439
+nDCG@5    : 0.479
+
+Dense Retrieval
+---------------
+Recall@3 : 0.850
+Recall@5 : 0.900
+MRR       : 0.713
+nDCG@5    : 0.761
+
+Hybrid Retrieval
+----------------
+Recall@3 : 0.900
+Recall@5 : 0.950
+MRR       : 0.713
+nDCG@5    : 0.773
+
+Hybrid + CrossEncoder
+---------------------
+Recall@3 : 0.850
+Recall@5 : 0.850
+MRR       : 0.767
+nDCG@5    : 0.788
+
+==========================================================
+OBSERVATIONS
+==========================================================
+
+- BM25 provides strong lexical retrieval.
+- Dense Retrieval significantly improves semantic retrieval.
+- Weighted RRF achieves the highest retrieval coverage.
+- CrossEncoder reranking provides the best ranking quality.
+
+Highest Recall@5 : Hybrid Retrieval
+Highest MRR      : Hybrid + CrossEncoder
+Highest nDCG@5   : Hybrid + CrossEncoder
+
+==========================================================
+FINAL PIPELINE
+==========================================================
+
+Repository
+      │
+      ▼
+Chunking
+      │
+      ▼
+Dense Embeddings (BGE)
+      │
+      ▼
+FAISS
+
++
+
+BM25
+
+      │
+      ▼
+Weighted Reciprocal Rank Fusion
+
+      │
+      ▼
+CrossEncoder Reranker
+
+      │
+      ▼
+Top-k Context
+
+      │
+      ▼
+LLM
